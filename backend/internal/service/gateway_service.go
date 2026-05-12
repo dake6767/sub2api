@@ -6679,6 +6679,19 @@ func buildBetaTokenSet(tokens []string) map[string]struct{} {
 
 var defaultDroppedBetasSet = buildBetaTokenSet(claude.DroppedBetas)
 
+var clientDrivenStainlessHeaders = map[string]struct{}{
+	"x-stainless-retry-count": {},
+	"x-stainless-timeout":     {},
+}
+
+// isClientDrivenStainlessHeader 判断是否为"应尊重客户端提供值"的 stainless 指标头。
+// 真实 CLI 的 retry-count 与 timeout 是按请求上下文变化的动态值，硬编码会形成可被
+// 服务端 SQL 直接圈出的水印。对这两个 key：客户端已提供时保留，否则沿用默认。
+func isClientDrivenStainlessHeader(key string) bool {
+	_, ok := clientDrivenStainlessHeaders[strings.ToLower(key)]
+	return ok
+}
+
 // applyClaudeCodeMimicHeaders forces "Claude Code-like" request headers.
 // This mirrors opencode-anthropic-auth behavior: do not trust downstream
 // headers when using Claude Code-scoped OAuth credentials.
@@ -6692,6 +6705,9 @@ func applyClaudeCodeMimicHeaders(req *http.Request, isStream bool) {
 	// 使用 resolveWireCasing 确保 key 与真实 wire format 一致（如 "x-app" 而非 "X-App"）
 	for key, value := range claude.DefaultHeaders {
 		if value == "" {
+			continue
+		}
+		if isClientDrivenStainlessHeader(key) && getHeaderRaw(req.Header, key) != "" {
 			continue
 		}
 		setHeaderRaw(req.Header, resolveWireCasing(key), value)
