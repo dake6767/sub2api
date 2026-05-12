@@ -91,6 +91,18 @@ type Config struct {
 	Gemini                  GeminiConfig                  `mapstructure:"gemini"`
 	Update                  UpdateConfig                  `mapstructure:"update"`
 	Idempotency             IdempotencyConfig             `mapstructure:"idempotency"`
+	Fingerprint             FingerprintConfig             `mapstructure:"fingerprint"`
+}
+
+// FingerprintConfig 出站请求水印/签名参数。
+// 留空即按内置默认值运行（与真实 Claude Code CLI 对齐）；
+// 自部署可在 config.yaml 覆盖以消除"开源 sub2api 共用同一水印"的指纹。
+type FingerprintConfig struct {
+	// Salt 计算 cc_version 后缀 fp 的盐值。hex/任意字符串均可，空=使用内置默认。
+	Salt string `mapstructure:"salt"`
+	// CCHSeed 计算 x-anthropic-billing-header 中 cch=XXXXX 的 xxHash64 种子。
+	// 接受 "0x…" 或十进制字符串，空=使用内置默认。
+	CCHSeed string `mapstructure:"cch_seed"`
 }
 
 type LogConfig struct {
@@ -1804,6 +1816,11 @@ func setDefaults() {
 	// Subscription Maintenance (bounded queue + worker pool)
 	viper.SetDefault("subscription_maintenance.worker_count", 2)
 	viper.SetDefault("subscription_maintenance.queue_size", 1024)
+
+	// Fingerprint (outbound request watermark/signing overrides).
+	// 留空即使用 service 包内置默认值（与真实 Claude Code CLI 对齐）。
+	viper.SetDefault("fingerprint.salt", "")
+	viper.SetDefault("fingerprint.cch_seed", "")
 
 }
 
