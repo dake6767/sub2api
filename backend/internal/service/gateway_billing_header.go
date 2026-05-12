@@ -18,7 +18,13 @@ var ccVersionInBillingRe = regexp.MustCompile(`cc_version=\d+\.\d+\.\d+`)
 // scoped to x-anthropic-billing-header to avoid touching user content.
 var cchPlaceholderRe = regexp.MustCompile(`(x-anthropic-billing-header:[^"]*?\bcch=)(00000)(;)`)
 
-const cchSeed uint64 = 0x6E52736AC806831E
+// defaultCCHSeed 是 cch= 签名 xxHash64 的内置默认种子。
+// 保留原值以使默认行为与真实 Claude Code CLI 字节对齐；
+// 可通过 config.yaml 的 fingerprint.cch_seed 覆盖以消除开源部署共用水印。
+const defaultCCHSeed uint64 = 0x6E52736AC806831E
+
+// cchSeed 为生效的种子，启动时由 ConfigureFingerprint 根据配置覆盖，未配置时等于 defaultCCHSeed。
+var cchSeed uint64 = defaultCCHSeed
 
 // syncBillingHeaderVersion rewrites cc_version in x-anthropic-billing-header
 // system text blocks to match the version extracted from userAgent.

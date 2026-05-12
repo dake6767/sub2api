@@ -9,12 +9,17 @@ import (
 	"github.com/tidwall/gjson"
 )
 
-// fingerprintSalt 是计算 cc_version 后缀指纹的盐值。
+// defaultFingerprintSalt 是计算 cc_version 后缀指纹的内置默认盐值。
 //
 // 来源：与 Parrot src/transform/cc_mimicry.py 的 FINGERPRINT_SALT 完全一致；
-// 这是真实 Claude Code CLI 抓包推导出的常量，改动会导致 fp 与 CLI 不一致，
-// 进一步触发 Anthropic 的第三方检测。
-const fingerprintSalt = "59cf53e54c78"
+// 这是真实 Claude Code CLI 抓包推导出的常量，不改动时 fp 与 CLI 对齐。
+//
+// 自部署可通过 config.yaml 的 fingerprint.salt 覆盖，消除"全网 sub2api 共用同一水印"的指纹；
+// 改动后 fp 与真实 CLI 不再一致，注意观察 Anthropic 的第三方检测反应。
+const defaultFingerprintSalt = "59cf53e54c78"
+
+// fingerprintSalt 为生效的盐值，启动时由 ConfigureFingerprint 根据配置覆盖，未配置时等于 defaultFingerprintSalt。
+var fingerprintSalt = defaultFingerprintSalt
 
 // computeClaudeCodeFingerprint 复刻真实 Claude Code CLI 的 cc_version 指纹算法：
 //
