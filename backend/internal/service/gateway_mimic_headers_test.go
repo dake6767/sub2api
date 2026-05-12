@@ -91,3 +91,27 @@ func TestIsClientDrivenStainlessHeader(t *testing.T) {
 	assert.False(t, isClientDrivenStainlessHeader("X-Stainless-Lang"))
 	assert.False(t, isClientDrivenStainlessHeader("User-Agent"))
 }
+
+// TestApplyClaudeCodeMimicHeaders_ClientOverridesPrefilledDefault
+// 真实调用路径回归测试：进入 mimic 函数时，req.Header 往往已被
+// applyClaudeOAuthHeaderDefaults 预填 DefaultHeaders 值（Retry-Count=0 / Timeout=600）。
+// 客户端提供的真实值必须能盖过这些预填，否则上游收到的仍是硬编码默认值，
+// 导致水印形成（通过真实抓包 UPSTREAM_FORWARD 发现过该 bug）。
+func TestApplyClaudeCodeMimicHeaders_ClientOverridesPrefilledDefault(t *testing.T) {
+	// 模拟进入 mimic 函数前的真实状态：req.Header 已被预填默认值
+	req := buildMimicReq(http.Header{
+		"X-Stainless-Retry-Count": []string{"0"},
+		"X-Stainless-Timeout":     []string{"600"},
+	})
+	clientHeaders := http.Header{
+		"X-Stainless-Retry-Count": []string{"7"},
+		"X-Stainless-Timeout":     []string{"42"},
+	}
+
+	applyClaudeCodeMimicHeaders(req, false, clientHeaders)
+
+	assert.Equal(t, "7", getHeaderRaw(req.Header, "X-Stainless-Retry-Count"),
+		"客户端值必须盖过预填的默认 '0'")
+	assert.Equal(t, "42", getHeaderRaw(req.Header, "X-Stainless-Timeout"),
+		"客户端值必须盖过预填的默认 '600'")
+}
