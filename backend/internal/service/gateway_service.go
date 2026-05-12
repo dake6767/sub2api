@@ -6166,7 +6166,7 @@ func (s *GatewayService) buildUpstreamRequest(ctx context.Context, c *gin.Contex
 			// 非 Claude Code 客户端：按 opencode 的策略处理：
 			// - 强制 Claude Code 指纹相关请求头（尤其是 user-agent/x-stainless/x-app）
 			// - 保留 incoming beta 的同时，确保 OAuth 所需 beta 存在
-			applyClaudeCodeMimicHeaders(req, reqStream)
+			applyClaudeCodeMimicHeaders(req, reqStream, clientHeaders)
 
 			incomingBeta := getHeaderRaw(req.Header, "anthropic-beta")
 			// Claude Code OAuth credentials are scoped to Claude Code.
@@ -6695,9 +6695,23 @@ func isClientDrivenStainlessHeader(key string) bool {
 // applyClaudeCodeMimicHeaders forces "Claude Code-like" request headers.
 // This mirrors opencode-anthropic-auth behavior: do not trust downstream
 // headers when using Claude Code-scoped OAuth credentials.
-func applyClaudeCodeMimicHeaders(req *http.Request, isStream bool) {
+//
+// clientHeaders 为原始客户端请求头。OAuth mimic 路径默认不透传客户端头（见
+// buildUpstreamRequest 中跳过的白名单透传），但 X-Stainless-Retry-Count/Timeout
+// 是按请求上下文变化的动态字段，硬编码会形成服务端可圈出的水印。因此本函数在
+// 覆盖 DefaultHeaders 之前，先把这两个头从客户端原请求搬进 req.Header，
+// 使后续的"已存在则跳过"分支能真正生效。clientHeaders 为 nil 时退化为旧行为。
+func applyClaudeCodeMimicHeaders(req *http.Request, isStream bool, clientHeaders http.Header) {
 	if req == nil {
 		return
+	}
+	// 从客户端请求头搬入 client-driven stainless 头，供下面的跳过分支使用
+	if clientHeaders != nil {
+		for key := range clientDrivenStainlessHeaders {
+			if v := getHeaderRaw(clientHeaders, key); v != "" && getHeaderRaw(req.Header, key) == "" {
+				setHeaderRaw(req.Header, resolveWireCasing(key), v)
+			}
+		}
 	}
 	// Start with the standard defaults (fill missing).
 	applyClaudeOAuthHeaderDefaults(req)
@@ -9459,7 +9473,7 @@ func (s *GatewayService) buildCountTokensRequest(ctx context.Context, c *gin.Con
 	// OAuth 账号：处理 anthropic-beta header
 	if tokenType == "oauth" {
 		if mimicClaudeCode {
-			applyClaudeCodeMimicHeaders(req, false)
+			applyClaudeCodeMimicHeaders(req, false, clientHeaders)
 
 			incomingBeta := getHeaderRaw(req.Header, "anthropic-beta")
 			requiredBetas := append(claude.FullClaudeCodeMimicryBetas(), claude.BetaTokenCounting)

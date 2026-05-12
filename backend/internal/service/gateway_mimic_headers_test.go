@@ -23,10 +23,12 @@ func buildMimicReq(initial http.Header) *http.Request {
 
 // TestApplyClaudeCodeMimicHeaders_StainlessRetryCount_PassthroughWhenClientSet
 // 客户端已提供 X-Stainless-Retry-Count 时，mimic 不应覆盖为默认 "0"。
+// 真实调用路径 clientHeaders 非空，本测试模拟"客户端 header 从 clientHeaders 搬入"的场景。
 func TestApplyClaudeCodeMimicHeaders_StainlessRetryCount_PassthroughWhenClientSet(t *testing.T) {
-	req := buildMimicReq(http.Header{"X-Stainless-Retry-Count": []string{"3"}})
+	clientHeaders := http.Header{"X-Stainless-Retry-Count": []string{"3"}}
+	req := buildMimicReq(http.Header{})
 
-	applyClaudeCodeMimicHeaders(req, false)
+	applyClaudeCodeMimicHeaders(req, false, clientHeaders)
 
 	assert.Equal(t, "3", getHeaderRaw(req.Header, "X-Stainless-Retry-Count"),
 		"应保留客户端提供的 retry-count")
@@ -35,9 +37,10 @@ func TestApplyClaudeCodeMimicHeaders_StainlessRetryCount_PassthroughWhenClientSe
 // TestApplyClaudeCodeMimicHeaders_StainlessTimeout_PassthroughWhenClientSet
 // 客户端已提供 X-Stainless-Timeout 时，mimic 不应覆盖为默认 "600"。
 func TestApplyClaudeCodeMimicHeaders_StainlessTimeout_PassthroughWhenClientSet(t *testing.T) {
-	req := buildMimicReq(http.Header{"X-Stainless-Timeout": []string{"120"}})
+	clientHeaders := http.Header{"X-Stainless-Timeout": []string{"120"}}
+	req := buildMimicReq(http.Header{})
 
-	applyClaudeCodeMimicHeaders(req, false)
+	applyClaudeCodeMimicHeaders(req, false, clientHeaders)
 
 	assert.Equal(t, "120", getHeaderRaw(req.Header, "X-Stainless-Timeout"),
 		"应保留客户端提供的 timeout")
@@ -48,7 +51,7 @@ func TestApplyClaudeCodeMimicHeaders_StainlessTimeout_PassthroughWhenClientSet(t
 func TestApplyClaudeCodeMimicHeaders_StainlessHeaders_DefaultWhenMissing(t *testing.T) {
 	req := buildMimicReq(http.Header{})
 
-	applyClaudeCodeMimicHeaders(req, false)
+	applyClaudeCodeMimicHeaders(req, false, nil)
 
 	assert.Equal(t, claude.DefaultHeaders["X-Stainless-Retry-Count"],
 		getHeaderRaw(req.Header, "X-Stainless-Retry-Count"),
@@ -59,16 +62,17 @@ func TestApplyClaudeCodeMimicHeaders_StainlessHeaders_DefaultWhenMissing(t *test
 }
 
 // TestApplyClaudeCodeMimicHeaders_NonClientDrivenStillForced
-// 其他 stainless 头（如 Lang / OS / Runtime）仍应强制覆盖为 DefaultHeaders 值，
-// 避免客户端伪造破坏整体伪装一致性。
+// 即便客户端 headers 里带了 Lang/OS/Runtime 等非客户端驱动字段，
+// 仍应被强制覆盖为 DefaultHeaders 值，避免客户端伪造破坏整体伪装一致性。
 func TestApplyClaudeCodeMimicHeaders_NonClientDrivenStillForced(t *testing.T) {
-	req := buildMimicReq(http.Header{
+	clientHeaders := http.Header{
 		"X-Stainless-Lang":    []string{"python"},
 		"X-Stainless-OS":      []string{"Windows"},
 		"X-Stainless-Runtime": []string{"cpython"},
-	})
+	}
+	req := buildMimicReq(http.Header{})
 
-	applyClaudeCodeMimicHeaders(req, false)
+	applyClaudeCodeMimicHeaders(req, false, clientHeaders)
 
 	assert.Equal(t, claude.DefaultHeaders["X-Stainless-Lang"],
 		getHeaderRaw(req.Header, "X-Stainless-Lang"),
