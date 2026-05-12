@@ -24,17 +24,6 @@ var (
 	userAgentVersionRegex = regexp.MustCompile(`/(\d+)\.(\d+)\.(\d+)`)
 )
 
-// 默认指纹值（当客户端未提供时使用）
-var defaultFingerprint = Fingerprint{
-	UserAgent:               "claude-cli/2.1.92 (external, cli)",
-	StainlessLang:           "js",
-	StainlessPackageVersion: "0.70.0",
-	StainlessOS:             "Linux",
-	StainlessArch:           "arm64",
-	StainlessRuntime:        "node",
-	StainlessRuntimeVersion: "v24.13.0",
-}
-
 // Fingerprint represents account fingerprint data
 type Fingerprint struct {
 	ClientID                string
@@ -103,7 +92,7 @@ func (s *IdentityService) GetOrCreateFingerprint(ctx context.Context, accountID 
 	}
 
 	// 缓存不存在或解析失败，创建新指纹
-	fp := s.createFingerprintFromHeaders(headers)
+	fp := s.createFingerprintFromHeaders(accountID, headers)
 
 	// 生成随机ClientID
 	fp.ClientID = generateClientID()
@@ -119,31 +108,34 @@ func (s *IdentityService) GetOrCreateFingerprint(ctx context.Context, accountID 
 }
 
 // createFingerprintFromHeaders 从请求头创建指纹
-func (s *IdentityService) createFingerprintFromHeaders(headers http.Header) *Fingerprint {
+// 请求头缺失时按 accountID 从池中挑选默认值（见 pickPooledFingerprint），
+// 避免所有新账号共用一组硬编码默认值而形成群体指纹。
+func (s *IdentityService) createFingerprintFromHeaders(accountID int64, headers http.Header) *Fingerprint {
+	pooled := pickPooledFingerprint(accountID)
 	fp := &Fingerprint{}
 
 	// 获取User-Agent
 	if ua := headers.Get("User-Agent"); ua != "" {
 		fp.UserAgent = ua
 	} else {
-		fp.UserAgent = defaultFingerprint.UserAgent
+		fp.UserAgent = pooled.UserAgent
 	}
 
-	// 获取x-stainless-*头，如果没有则使用默认值
-	fp.StainlessLang = getHeaderOrDefault(headers, "X-Stainless-Lang", defaultFingerprint.StainlessLang)
-	fp.StainlessPackageVersion = getHeaderOrDefault(headers, "X-Stainless-Package-Version", defaultFingerprint.StainlessPackageVersion)
-	fp.StainlessOS = getHeaderOrDefault(headers, "X-Stainless-OS", defaultFingerprint.StainlessOS)
-	fp.StainlessArch = getHeaderOrDefault(headers, "X-Stainless-Arch", defaultFingerprint.StainlessArch)
-	fp.StainlessRuntime = getHeaderOrDefault(headers, "X-Stainless-Runtime", defaultFingerprint.StainlessRuntime)
-	fp.StainlessRuntimeVersion = getHeaderOrDefault(headers, "X-Stainless-Runtime-Version", defaultFingerprint.StainlessRuntimeVersion)
+	// 获取x-stainless-*头，如果没有则使用池中默认值
+	fp.StainlessLang = getHeaderOrDefault(headers, "X-Stainless-Lang", pooled.StainlessLang)
+	fp.StainlessPackageVersion = getHeaderOrDefault(headers, "X-Stainless-Package-Version", pooled.StainlessPackageVersion)
+	fp.StainlessOS = getHeaderOrDefault(headers, "X-Stainless-OS", pooled.StainlessOS)
+	fp.StainlessArch = getHeaderOrDefault(headers, "X-Stainless-Arch", pooled.StainlessArch)
+	fp.StainlessRuntime = getHeaderOrDefault(headers, "X-Stainless-Runtime", pooled.StainlessRuntime)
+	fp.StainlessRuntimeVersion = getHeaderOrDefault(headers, "X-Stainless-Runtime-Version", pooled.StainlessRuntimeVersion)
 
 	return fp
 }
 
 // mergeHeadersIntoFingerprint 将请求头中实际存在的字段合并到现有指纹中（用于版本升级场景）
 // 关键语义：请求中有的字段 → 用新值覆盖；缺失的头 → 保留缓存中的已有值
-// 与 createFingerprintFromHeaders 的区别：后者用于首次创建，缺失头回退到 defaultFingerprint；
-// 本函数用于升级更新，缺失头保留缓存值，避免将已知的真实值退化为硬编码默认值
+// 与 createFingerprintFromHeaders 的区别：后者用于首次创建，缺失头回退到池中默认值；
+// 本函数用于升级更新，缺失头保留缓存值，避免将已知的真实值退化为默认值
 func mergeHeadersIntoFingerprint(fp *Fingerprint, headers http.Header) {
 	// User-Agent：版本升级的触发条件，一定存在
 	if ua := headers.Get("User-Agent"); ua != "" {
