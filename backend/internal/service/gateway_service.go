@@ -6705,10 +6705,13 @@ func applyClaudeCodeMimicHeaders(req *http.Request, isStream bool, clientHeaders
 	if req == nil {
 		return
 	}
-	// 从客户端请求头搬入 client-driven stainless 头，供下面的跳过分支使用
+	// 从客户端请求头搬入 client-driven stainless 头：只要客户端带了值就覆盖，
+	// 因为这些是按请求上下文变化的动态字段，客户端值永远比预填的默认值更准确。
+	// （此时 req.Header 中可能已被 applyClaudeOAuthHeaderDefaults 预填默认值，
+	// 用 "existing == '' 才搬" 的条件会导致客户端值被默认值挡住。）
 	if clientHeaders != nil {
 		for key := range clientDrivenStainlessHeaders {
-			if v := getHeaderRaw(clientHeaders, key); v != "" && getHeaderRaw(req.Header, key) == "" {
+			if v := getHeaderRaw(clientHeaders, key); v != "" {
 				setHeaderRaw(req.Header, resolveWireCasing(key), v)
 			}
 		}
