@@ -147,6 +147,7 @@ func runMainServer() {
 	if err := service.ConfigureFingerprint(cfg.Fingerprint); err != nil {
 		log.Fatalf("Failed to configure fingerprint: %v", err)
 	}
+	service.ConfigureOpenAIFingerprint(cfg.OpenAIFingerprint)
 
 	buildInfo := handler.BuildInfo{
 		Version:   Version,
