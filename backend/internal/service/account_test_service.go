@@ -692,7 +692,7 @@ func (s *AccountTestService) testOpenAICompactConnection(c *gin.Context, account
 	req.Header.Set("Accept", "application/json")
 	req.Header.Set("Authorization", "Bearer "+authToken)
 	req.Header.Set("OpenAI-Beta", "responses=experimental")
-	req.Header.Set("Originator", "codex_cli_rs")
+	req.Header.Set("Originator", openAIOriginatorOfficial)
 	req.Header.Set("User-Agent", codexCLIUserAgent)
 	req.Header.Set("Version", codexCLIVersion)
 	probeSessionID := compactProbeSessionID(account.ID)
@@ -1452,7 +1452,7 @@ func (s *AccountTestService) testOpenAIImageOAuth(c *gin.Context, ctx context.Co
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Accept", "text/event-stream")
 	req.Header.Set("OpenAI-Beta", "responses=experimental")
-	req.Header.Set("originator", "opencode")
+	req.Header.Set("originator", openAIOriginatorFallback)
 	if customUA := strings.TrimSpace(account.GetOpenAIUserAgent()); customUA != "" {
 		req.Header.Set("User-Agent", customUA)
 	} else {

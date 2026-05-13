@@ -92,6 +92,7 @@ type Config struct {
 	Update                  UpdateConfig                  `mapstructure:"update"`
 	Idempotency             IdempotencyConfig             `mapstructure:"idempotency"`
 	Fingerprint             FingerprintConfig             `mapstructure:"fingerprint"`
+	OpenAIFingerprint       OpenAIFingerprintConfig       `mapstructure:"openai_fingerprint"`
 }
 
 // FingerprintConfig 出站请求水印/签名参数。
@@ -103,6 +104,22 @@ type FingerprintConfig struct {
 	// CCHSeed 计算 x-anthropic-billing-header 中 cch=XXXXX 的 xxHash64 种子。
 	// 接受 "0x…" 或十进制字符串，空=使用内置默认。
 	CCHSeed string `mapstructure:"cch_seed"`
+}
+
+// OpenAIFingerprintConfig 出站 Codex/OpenAI 请求标识项覆盖。
+// 留空即按内置默认值运行（与真实 Codex CLI 0.125.0 对齐）；
+// 自部署可在 config.yaml 覆盖以消除"开源 sub2api 共用同一标识"的指纹。
+type OpenAIFingerprintConfig struct {
+	// UserAgent 上游 codex 请求的 User-Agent 头。必须仍为 codex_* 家族，
+	// 否则 ChatGPT 后端 codex_cli_only 校验会直接拒。空=使用内置默认。
+	UserAgent string `mapstructure:"user_agent"`
+	// Version Codex CLI version 头值。空=使用内置默认 0.125.0。
+	Version string `mapstructure:"version"`
+	// OriginatorOfficial 官方 Codex 客户端家族请求的 originator 兜底值。空=codex_cli_rs。
+	OriginatorOfficial string `mapstructure:"originator_official"`
+	// OriginatorFallback 非官方客户端请求的 originator 兜底值。空=opencode。
+	// 建议自部署改成部署私有标识，避免出现 "opencode" 这类开源代理标识。
+	OriginatorFallback string `mapstructure:"originator_fallback"`
 }
 
 type LogConfig struct {
@@ -1821,6 +1838,13 @@ func setDefaults() {
 	// 留空即使用 service 包内置默认值（与真实 Claude Code CLI 对齐）。
 	viper.SetDefault("fingerprint.salt", "")
 	viper.SetDefault("fingerprint.cch_seed", "")
+
+	// OpenAI fingerprint (outbound codex/openai request identity overrides).
+	// 留空即使用 service 包内置默认值（与真实 Codex CLI 0.125.0 对齐）。
+	viper.SetDefault("openai_fingerprint.user_agent", "")
+	viper.SetDefault("openai_fingerprint.version", "")
+	viper.SetDefault("openai_fingerprint.originator_official", "")
+	viper.SetDefault("openai_fingerprint.originator_fallback", "")
 
 }
 

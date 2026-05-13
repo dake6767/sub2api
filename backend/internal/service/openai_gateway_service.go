@@ -40,7 +40,12 @@ const (
 	// OpenAI Platform API for API Key accounts (fallback)
 	openaiPlatformAPIURL   = "https://api.openai.com/v1/responses"
 	openaiStickySessionTTL = time.Hour // 粘性会话TTL
-	codexCLIUserAgent      = "codex_cli_rs/0.125.0"
+	// defaultCodexCLIUserAgent 与 defaultCodexCLIVersion 保持与真实 Codex CLI 对齐。
+	// 生效值是 codexCLIUserAgent / codexCLIVersion（可配置），初始化时指向 default。
+	defaultCodexCLIUserAgent        = "codex_cli_rs/0.125.0"
+	defaultCodexCLIVersion          = "0.125.0"
+	defaultOpenAIOriginatorOfficial = "codex_cli_rs"
+	defaultOpenAIOriginatorFallback = "opencode"
 	// codex_cli_only 拒绝时单个请求头日志长度上限（字符）
 	codexCLIOnlyHeaderValueMaxBytes = 256
 
@@ -54,9 +59,17 @@ const (
 	openAIWSRetryBackoffMaxDefault     = 2 * time.Second
 	openAIWSRetryJitterRatioDefault    = 0.2
 	openAICompactSessionSeedKey        = "openai_compact_session_seed"
-	codexCLIVersion                    = "0.125.0"
 	// Codex 限额快照仅用于后台展示/诊断，不需要每个成功请求都立即落库。
 	openAICodexSnapshotPersistMinInterval = 30 * time.Second
+)
+
+// 以下为可由 ConfigureOpenAIFingerprint 覆盖的生效值。
+// 未调用 ConfigureOpenAIFingerprint 时保持内置默认，行为与改前字节一致。
+var (
+	codexCLIUserAgent        = defaultCodexCLIUserAgent
+	codexCLIVersion          = defaultCodexCLIVersion
+	openAIOriginatorOfficial = defaultOpenAIOriginatorOfficial
+	openAIOriginatorFallback = defaultOpenAIOriginatorFallback
 )
 
 // OpenAI allowed headers whitelist (for non-passthrough).
@@ -1226,9 +1239,9 @@ func resolveOpenAIUpstreamOriginator(c *gin.Context, isOfficialClient bool) stri
 		}
 	}
 	if isOfficialClient {
-		return "codex_cli_rs"
+		return openAIOriginatorOfficial
 	}
-	return "opencode"
+	return openAIOriginatorFallback
 }
 
 // BindStickySession sets session -> account binding with standard TTL.
@@ -3176,7 +3189,7 @@ func (s *OpenAIGatewayService) buildUpstreamRequestOpenAIPassthrough(
 			req.Header.Set("OpenAI-Beta", "responses=experimental")
 		}
 		if req.Header.Get("originator") == "" {
-			req.Header.Set("originator", "codex_cli_rs")
+			req.Header.Set("originator", openAIOriginatorOfficial)
 		}
 		// 用隔离后的 session 标识符覆盖客户端透传值，防止跨用户会话碰撞。
 		if clientSessionID == "" {
