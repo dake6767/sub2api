@@ -14,9 +14,9 @@ import (
 // 已缓存（历史）账号不受影响 —— 缓存命中时直接返回已有 Fingerprint，不会进入本池。
 
 var fingerprintPoolUserAgent = []string{
-	"claude-cli/2.1.92 (external, cli)",
-	"claude-cli/2.1.87 (external, cli)",
-	"claude-cli/2.1.81 (external, cli)",
+	"claude-cli/2.1.140 (external, cli)",
+	"claude-cli/2.1.135 (external, cli)",
+	"claude-cli/2.1.128 (external, cli)",
 }
 
 var fingerprintPoolStainlessOS = []string{
@@ -30,14 +30,14 @@ var fingerprintPoolStainlessArch = []string{
 }
 
 var fingerprintPoolStainlessRuntimeVersion = []string{
-	"v24.13.0",
-	"v22.11.0",
-	"v20.18.1",
+	"v24.16.0",
+	"v22.13.0",
+	"v20.18.3",
 }
 
 var fingerprintPoolStainlessPackageVersion = []string{
-	"0.70.0",
-	"0.65.0",
+	"0.74.0",
+	"0.72.0",
 }
 
 // 恒定字段：真实抓包中这两个值没有可观察变化，保留单一常量即可。
