@@ -14,9 +14,9 @@ import (
 // 已缓存（历史）账号不受影响 —— 缓存命中时直接返回已有 Fingerprint，不会进入本池。
 
 var fingerprintPoolUserAgent = []string{
+	"claude-cli/2.1.143 (external, cli)",
 	"claude-cli/2.1.140 (external, cli)",
 	"claude-cli/2.1.135 (external, cli)",
-	"claude-cli/2.1.128 (external, cli)",
 }
 
 var fingerprintPoolStainlessOS = []string{
