@@ -1997,6 +1997,26 @@ func (a *Account) GetMaxSessions() int {
 	return 0
 }
 
+// EffectiveConcurrency 计算出站调度真正生效的并发上限。
+// 对 Anthropic OAuth/SetupToken 账号,若 extra.max_sessions(同步自上游) 已知且小于
+// a.Concurrency(DB 字段),则取较小者 —— 防止 admin 误配大于上游真实上限的并发,
+// 持续触发上游 session/rate 限制并贡献风控分。
+// 其他账号(API key、非 Anthropic 平台)按 a.Concurrency 原值返回,保持原有行为。
+func (a *Account) EffectiveConcurrency() int {
+	conc := a.Concurrency
+	if !a.IsAnthropicOAuthOrSetupToken() {
+		return conc
+	}
+	ms := a.GetMaxSessions()
+	if ms <= 0 {
+		return conc
+	}
+	if conc <= 0 || ms < conc {
+		return ms
+	}
+	return conc
+}
+
 // GetSessionIdleTimeoutMinutes 获取会话空闲超时分钟数
 // 默认值为 5 分钟
 func (a *Account) GetSessionIdleTimeoutMinutes() int {
