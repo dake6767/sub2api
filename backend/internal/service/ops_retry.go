@@ -420,7 +420,7 @@ func (s *OpsService) executePinnedRetry(ctx context.Context, reqType opsRetryReq
 
 	var release func()
 	if s.concurrencyService != nil {
-		acq, err := s.concurrencyService.AcquireAccountSlot(ctx, account.ID, account.Concurrency)
+		acq, err := s.concurrencyService.AcquireAccountSlot(ctx, account.ID, account.EffectiveConcurrency())
 		if err != nil {
 			return &opsRetryExecution{status: opsRetryStatusFailed, errorMessage: fmt.Sprintf("acquire account slot failed: %v", err)}
 		}
