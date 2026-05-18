@@ -4594,6 +4594,13 @@ func (s *GatewayService) Forward(ctx context.Context, c *gin.Context, account *A
 				_ = resp.Body.Close()
 
 				if s.shouldRectifySignatureError(ctx, account, respBody) {
+					// 把入站 body(StripEmptyTextBlocks 后,buildUpstreamRequest 之前)+
+					// 出站 body(buildUpstreamRequest 已 stash 到 gin context) +
+					// 上游 400 响应一起 dump 到专用文件,供事后字节级 diff。
+					// 不影响重试/降级路径,纯旁路记录。
+					dumpThinkingSignatureError(c, body, respBody,
+						buildDumpExtras(account, c, resp.Header.Get("x-request-id")))
+
 					appendOpsUpstreamError(c, OpsUpstreamErrorEvent{
 						Platform:           account.Platform,
 						AccountID:          account.ID,
@@ -6110,6 +6117,10 @@ func (s *GatewayService) buildUpstreamRequest(ctx context.Context, c *gin.Contex
 	if enableCCH {
 		body = signBillingHeaderCCH(body)
 	}
+
+	// 出站 body 已成型。stash 到 gin context,供 thinking signature error 检测点取出做 byte-diff。
+	// 仅在出错路径才会被读取,正常请求开销 = 一次 make+copy。
+	stashOutboundBodyForDebug(c, body)
 
 	req, err := http.NewRequestWithContext(ctx, "POST", targetURL, bytes.NewReader(body))
 	if err != nil {
