@@ -6121,6 +6121,9 @@ export default {
         enabledHint: 'Master switch - disabling turns off all rectification features',
         thinkingSignature: 'Thinking Signature Rectifier',
         thinkingSignatureHint: 'Automatically strip signatures and retry when upstream returns thinking block signature validation errors',
+        preflightThinkingFilter: 'Preflight fake thinking-signature filter',
+        preflightThinkingFilterHint:
+          'Proactive mode: scan thinking blocks before forwarding; if signature is a 36-char UUID placeholder (a known agent-sdk client bug), convert the block to text and clear the top-level thinking config, so the upstream never sees an invalid signature. Keep "Thinking Signature Rectifier" (reactive) enabled as fallback before turning this on.',
         thinkingBudget: 'Thinking Budget Rectifier',
         thinkingBudgetHint: 'Automatically set budget to 32000 and retry when upstream returns budget_tokens constraint error (≥1024)',
         apikeySignature: 'API Key Signature Rectifier',

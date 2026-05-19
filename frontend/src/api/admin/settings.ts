@@ -1164,6 +1164,7 @@ export interface RectifierSettings {
   thinking_budget_enabled: boolean;
   apikey_signature_enabled: boolean;
   apikey_signature_patterns: string[];
+  preflight_thinking_filter_enabled: boolean;
 }
 
 /**

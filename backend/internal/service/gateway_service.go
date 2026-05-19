@@ -6118,6 +6118,15 @@ func (s *GatewayService) buildUpstreamRequest(ctx context.Context, c *gin.Contex
 		body = signBillingHeaderCCH(body)
 	}
 
+	// Preflight thinking filter：在 stash/转发前主动清理 agent-sdk 客户端注入的伪
+	// thinking signature（UUID 占位符）。仅当设置开关激活时生效；默认关闭，需 admin
+	// 显式打开（reactive rectifier 仍作为 safety net 保留）。
+	// 挂载点选在所有 body mimic/rewrite/sign 完成后、stashOutboundBodyForDebug 之前，
+	// 保证 stash 看到的就是真正发给上游的 body（含 preflight 修改），方便取证 diff。
+	if s.settingService != nil && s.settingService.IsPreflightThinkingFilterEnabled(ctx) {
+		body = preflightFilterFakeThinkingSignatures(body)
+	}
+
 	// 出站 body 已成型。stash 到 gin context,供 thinking signature error 检测点取出做 byte-diff。
 	// 仅在出错路径才会被读取,正常请求开销 = 一次 make+copy。
 	stashOutboundBodyForDebug(c, body)
