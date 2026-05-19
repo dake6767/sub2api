@@ -3855,6 +3855,17 @@ func (s *SettingService) IsBudgetRectifierEnabled(ctx context.Context) bool {
 	return settings.Enabled && settings.ThinkingBudgetEnabled
 }
 
+// IsPreflightThinkingFilterEnabled 判断入站 preflight thinking 过滤是否启用
+// （总开关 && PreflightThinkingFilterEnabled）
+// fail-close：查询失败时不启用，避免在 setting 读不到时擅自改 body
+func (s *SettingService) IsPreflightThinkingFilterEnabled(ctx context.Context) bool {
+	settings, err := s.GetRectifierSettings(ctx)
+	if err != nil {
+		return false
+	}
+	return settings.Enabled && settings.PreflightThinkingFilterEnabled
+}
+
 // GetBetaPolicySettings 获取 Beta 策略配置
 func (s *SettingService) GetBetaPolicySettings(ctx context.Context) (*BetaPolicySettings, error) {
 	value, err := s.settingRepo.GetValue(ctx, SettingKeyBetaPolicySettings)

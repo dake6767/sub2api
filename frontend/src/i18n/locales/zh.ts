@@ -6016,6 +6016,9 @@ export default {
         enabledHint: '总开关，关闭后所有整流功能均不生效',
         thinkingSignature: 'Thinking 签名整流',
         thinkingSignatureHint: '当上游返回 thinking block 签名校验错误时，自动去除签名并重试',
+        preflightThinkingFilter: '入站预过滤伪 thinking signature',
+        preflightThinkingFilterHint:
+          '主动模式：在发往上游前扫描 thinking 块，若 signature 为 36 字符 UUID 占位符（agent-sdk 客户端常见 bug），将其转为 text 块并清理顶层 thinking 配置，避免触发上游 400。建议先开启 Thinking 签名整流（reactive）作为兜底再激活本项。',
         thinkingBudget: 'Thinking Budget 整流',
         thinkingBudgetHint: '当上游返回 budget_tokens 约束错误（≥1024）时，自动将 budget 设为 32000 并重试',
         apikeySignature: 'API Key 签名整流',

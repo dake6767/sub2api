@@ -518,6 +518,7 @@ describe("admin SettingsView payment visible method controls", () => {
       thinking_budget_enabled: true,
       apikey_signature_enabled: false,
       apikey_signature_patterns: [],
+      preflight_thinking_filter_enabled: false,
     });
     getBetaPolicySettings.mockResolvedValue({
       rules: [],
@@ -804,6 +805,7 @@ describe("admin SettingsView wechat connect controls", () => {
       thinking_budget_enabled: true,
       apikey_signature_enabled: false,
       apikey_signature_patterns: [],
+      preflight_thinking_filter_enabled: false,
     });
     getBetaPolicySettings.mockResolvedValue({
       rules: [],

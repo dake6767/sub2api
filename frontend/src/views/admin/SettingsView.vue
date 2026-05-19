@@ -654,6 +654,28 @@
                     />
                   </div>
 
+                  <!-- Preflight Fake Thinking Signature Filter (proactive) -->
+                  <div class="flex items-center justify-between">
+                    <div>
+                      <label
+                        class="text-sm font-medium text-gray-700 dark:text-gray-300"
+                        >{{
+                          t("admin.settings.rectifier.preflightThinkingFilter")
+                        }}</label
+                      >
+                      <p class="text-xs text-gray-500 dark:text-gray-400">
+                        {{
+                          t(
+                            "admin.settings.rectifier.preflightThinkingFilterHint",
+                          )
+                        }}
+                      </p>
+                    </div>
+                    <Toggle
+                      v-model="rectifierForm.preflight_thinking_filter_enabled"
+                    />
+                  </div>
+
                   <!-- Thinking Budget Rectifier -->
                   <div class="flex items-center justify-between">
                     <div>
@@ -6326,6 +6348,7 @@ const rectifierForm = reactive({
   thinking_budget_enabled: true,
   apikey_signature_enabled: false,
   apikey_signature_patterns: [] as string[],
+  preflight_thinking_filter_enabled: false,
 });
 
 // Beta Policy 状态
@@ -8085,6 +8108,8 @@ async function saveRectifierSettings() {
       apikey_signature_patterns: rectifierForm.apikey_signature_patterns.filter(
         (p) => p.trim() !== "",
       ),
+      preflight_thinking_filter_enabled:
+        rectifierForm.preflight_thinking_filter_enabled,
     });
     Object.assign(rectifierForm, updated);
     if (!Array.isArray(rectifierForm.apikey_signature_patterns)) {

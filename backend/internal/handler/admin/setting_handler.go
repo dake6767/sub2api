@@ -2787,21 +2787,23 @@ func (h *SettingHandler) GetRectifierSettings(c *gin.Context) {
 		patterns = []string{}
 	}
 	response.Success(c, dto.RectifierSettings{
-		Enabled:                  settings.Enabled,
-		ThinkingSignatureEnabled: settings.ThinkingSignatureEnabled,
-		ThinkingBudgetEnabled:    settings.ThinkingBudgetEnabled,
-		APIKeySignatureEnabled:   settings.APIKeySignatureEnabled,
-		APIKeySignaturePatterns:  patterns,
+		Enabled:                        settings.Enabled,
+		ThinkingSignatureEnabled:       settings.ThinkingSignatureEnabled,
+		ThinkingBudgetEnabled:          settings.ThinkingBudgetEnabled,
+		APIKeySignatureEnabled:         settings.APIKeySignatureEnabled,
+		APIKeySignaturePatterns:        patterns,
+		PreflightThinkingFilterEnabled: settings.PreflightThinkingFilterEnabled,
 	})
 }
 
 // UpdateRectifierSettingsRequest 更新整流器配置请求
 type UpdateRectifierSettingsRequest struct {
-	Enabled                  bool     `json:"enabled"`
-	ThinkingSignatureEnabled bool     `json:"thinking_signature_enabled"`
-	ThinkingBudgetEnabled    bool     `json:"thinking_budget_enabled"`
-	APIKeySignatureEnabled   bool     `json:"apikey_signature_enabled"`
-	APIKeySignaturePatterns  []string `json:"apikey_signature_patterns"`
+	Enabled                        bool     `json:"enabled"`
+	ThinkingSignatureEnabled       bool     `json:"thinking_signature_enabled"`
+	ThinkingBudgetEnabled          bool     `json:"thinking_budget_enabled"`
+	APIKeySignatureEnabled         bool     `json:"apikey_signature_enabled"`
+	APIKeySignaturePatterns        []string `json:"apikey_signature_patterns"`
+	PreflightThinkingFilterEnabled bool     `json:"preflight_thinking_filter_enabled"`
 }
 
 // UpdateRectifierSettings 更新请求整流器配置
@@ -2834,11 +2836,12 @@ func (h *SettingHandler) UpdateRectifierSettings(c *gin.Context) {
 	}
 
 	settings := &service.RectifierSettings{
-		Enabled:                  req.Enabled,
-		ThinkingSignatureEnabled: req.ThinkingSignatureEnabled,
-		ThinkingBudgetEnabled:    req.ThinkingBudgetEnabled,
-		APIKeySignatureEnabled:   req.APIKeySignatureEnabled,
-		APIKeySignaturePatterns:  cleanedPatterns,
+		Enabled:                        req.Enabled,
+		ThinkingSignatureEnabled:       req.ThinkingSignatureEnabled,
+		ThinkingBudgetEnabled:          req.ThinkingBudgetEnabled,
+		APIKeySignatureEnabled:         req.APIKeySignatureEnabled,
+		APIKeySignaturePatterns:        cleanedPatterns,
+		PreflightThinkingFilterEnabled: req.PreflightThinkingFilterEnabled,
 	}
 
 	if err := h.settingService.SetRectifierSettings(c.Request.Context(), settings); err != nil {
@@ -2858,11 +2861,12 @@ func (h *SettingHandler) UpdateRectifierSettings(c *gin.Context) {
 		updatedPatterns = []string{}
 	}
 	response.Success(c, dto.RectifierSettings{
-		Enabled:                  updatedSettings.Enabled,
-		ThinkingSignatureEnabled: updatedSettings.ThinkingSignatureEnabled,
-		ThinkingBudgetEnabled:    updatedSettings.ThinkingBudgetEnabled,
-		APIKeySignatureEnabled:   updatedSettings.APIKeySignatureEnabled,
-		APIKeySignaturePatterns:  updatedPatterns,
+		Enabled:                        updatedSettings.Enabled,
+		ThinkingSignatureEnabled:       updatedSettings.ThinkingSignatureEnabled,
+		ThinkingBudgetEnabled:          updatedSettings.ThinkingBudgetEnabled,
+		APIKeySignatureEnabled:         updatedSettings.APIKeySignatureEnabled,
+		APIKeySignaturePatterns:        updatedPatterns,
+		PreflightThinkingFilterEnabled: updatedSettings.PreflightThinkingFilterEnabled,
 	})
 }
 
