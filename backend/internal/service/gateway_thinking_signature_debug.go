@@ -27,6 +27,13 @@ import (
 //     {path}.1,新写到原路径;**只保留两代**,旧的 .1 会被新一次轮转覆盖
 //   - body 完整记录(因为 thinking 块字节级 diff 必须看全量);
 //     单条记录用 \x1e (record separator) 分隔,字段用 JSON one-line
+//
+// 与上游 LogUpstreamErrorBody 的分工:
+//   - 上游 cfg.Gateway.LogUpstreamErrorBody=true 已经把 response body(截断)
+//     写进 ops_error_logs 的 Detail 字段,response body 不再在本 dumper 里重复
+//   - 本 dumper 的差异化价值 = 入站 body + 出站 body 字节级 diff
+//     (用于定位 sub2api 哪一步 transform 改坏了 thinking 块),
+//     这是上游 LogUpstreamErrorBody 覆盖不到的
 
 const (
 	thinkingSigDumpEnvPath  = "SUB2API_THINKING_SIG_DUMP_PATH"
@@ -58,14 +65,15 @@ func stashOutboundBodyForDebug(c *gin.Context, body []byte) {
 }
 
 // dumpThinkingSignatureError 当 isThinkingBlockSignatureError 命中时,把这次请求的
-// 入站 body + 出站 body + 上游响应 body 写到专用日志文件。
+// 入站 body + 出站 body 写到专用日志文件,供事后字节级 diff 定位是哪一步 transform
+// 改坏了 thinking 块。上游响应 body 不在这里记录(由上游 LogUpstreamErrorBody 写入
+// ops_error_logs.Detail),可通过 extras 里的 upstream_request_id 关联。
 //
 // 入参语义:
 //   - inboundBody:Forward() 在 StripEmptyTextBlocks 后、buildUpstreamRequest 之前
 //     的 body 字节,即 mimic/RewriteUserID/syncBilling/CCH 改写之前的状态
-//   - upstreamRespBody:上游返回的 400 响应 body(用于关联 Anthropic 的 request_id)
-//   - extra:用于关联的上下文字段(account_id, client_request_id, model 等)
-func dumpThinkingSignatureError(c *gin.Context, inboundBody, upstreamRespBody []byte, extra map[string]any) {
+//   - extra:用于关联的上下文字段(account_id, client_request_id, upstream_request_id, ...)
+func dumpThinkingSignatureError(c *gin.Context, inboundBody []byte, extra map[string]any) {
 	outboundBody := outboundBodyFromContext(c)
 
 	// inboundBody / outboundBody 至少一份有内容才值得写
@@ -85,12 +93,11 @@ func dumpThinkingSignatureError(c *gin.Context, inboundBody, upstreamRespBody []
 	rotateThinkingSigDumpIfNeededLocked(path)
 
 	record := map[string]any{
-		"ts":                    time.Now().UTC().Format(time.RFC3339Nano),
-		"inbound_body":          string(inboundBody),     // 入站(StripEmptyTextBlocks 后,mimic/identity/billing 改写前)
-		"outbound_body":         string(outboundBody),    // 出站(所有 transform 完成,即将发给 Anthropic)
-		"upstream_resp_body":    string(upstreamRespBody),
-		"inbound_body_len":      len(inboundBody),
-		"outbound_body_len":     len(outboundBody),
+		"ts":                time.Now().UTC().Format(time.RFC3339Nano),
+		"inbound_body":      string(inboundBody),  // 入站(StripEmptyTextBlocks 后,mimic/identity/billing 改写前)
+		"outbound_body":     string(outboundBody), // 出站(所有 transform 完成,即将发给 Anthropic)
+		"inbound_body_len":  len(inboundBody),
+		"outbound_body_len": len(outboundBody),
 	}
 	for k, v := range extra {
 		record[k] = v

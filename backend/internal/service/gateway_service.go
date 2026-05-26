@@ -4595,10 +4595,10 @@ func (s *GatewayService) Forward(ctx context.Context, c *gin.Context, account *A
 
 				if s.shouldRectifySignatureError(ctx, account, respBody) {
 					// 把入站 body(StripEmptyTextBlocks 后,buildUpstreamRequest 之前)+
-					// 出站 body(buildUpstreamRequest 已 stash 到 gin context) +
-					// 上游 400 响应一起 dump 到专用文件,供事后字节级 diff。
-					// 不影响重试/降级路径,纯旁路记录。
-					dumpThinkingSignatureError(c, body, respBody,
+					// 出站 body(buildUpstreamRequest 已 stash 到 gin context)dump 到专用文件,
+					// 供事后字节级 diff。response body 由上游 LogUpstreamErrorBody 写入
+					// ops_error_logs.Detail,通过 upstream_request_id 关联。纯旁路记录。
+					dumpThinkingSignatureError(c, body,
 						buildDumpExtras(account, c, resp.Header.Get("x-request-id")))
 
 					appendOpsUpstreamError(c, OpsUpstreamErrorEvent{

@@ -40,13 +40,12 @@ func TestDumpThinkingSignatureError_WritesJSONLineWithBothBodies(t *testing.T) {
 	stashOutboundBodyForDebug(c, outbound)
 
 	inbound := []byte(`{"in":"body","messages":[{"role":"assistant","content":[{"type":"thinking","signature":"sig-ABC"}]}]}`)
-	respBody := []byte(`{"error":{"message":"messages.1.content.0: Invalid ` + "`signature`" + ` in ` + "`thinking`" + ` block","type":"invalid_request_error"},"request_id":"req_TEST"}`)
 
 	extras := map[string]any{
 		"account_id":          int64(14),
 		"upstream_request_id": "req_TEST",
 	}
-	dumpThinkingSignatureError(c, inbound, respBody, extras)
+	dumpThinkingSignatureError(c, inbound, extras)
 
 	raw, err := os.ReadFile(logPath)
 	require.NoError(t, err)
@@ -61,7 +60,10 @@ func TestDumpThinkingSignatureError_WritesJSONLineWithBothBodies(t *testing.T) {
 
 	assert.Equal(t, string(inbound), got["inbound_body"])
 	assert.Equal(t, string(outbound), got["outbound_body"])
-	assert.Equal(t, string(respBody), got["upstream_resp_body"])
+	// upstream_resp_body 由上游 LogUpstreamErrorBody 写 ops_error_logs.Detail,
+	// 这里不再重复记录,通过 upstream_request_id 关联
+	_, hasResp := got["upstream_resp_body"]
+	assert.False(t, hasResp, "upstream_resp_body 应从 dumper 记录中移除")
 	assert.EqualValues(t, len(inbound), got["inbound_body_len"])
 	assert.EqualValues(t, len(outbound), got["outbound_body_len"])
 	assert.EqualValues(t, 14, got["account_id"])
@@ -79,7 +81,7 @@ func TestDumpThinkingSignatureError_NoOutboundStillDumpsInbound(t *testing.T) {
 	// 故意不 stash 出站 body —— 模拟 stash 失败或调用顺序错的边缘 case
 
 	inbound := []byte(`{"in":"body"}`)
-	dumpThinkingSignatureError(c, inbound, []byte(`{"error":"x"}`), nil)
+	dumpThinkingSignatureError(c, inbound, nil)
 
 	raw, err := os.ReadFile(logPath)
 	require.NoError(t, err)
@@ -103,7 +105,7 @@ func TestDumpThinkingSignatureError_EmptyBodiesNoOp(t *testing.T) {
 	c, _ := gin.CreateTestContext(httptest.NewRecorder())
 
 	// 入站与出站都为空,不应写文件(避免脏数据)
-	dumpThinkingSignatureError(c, nil, []byte(`{"error":"x"}`), nil)
+	dumpThinkingSignatureError(c, nil, nil)
 
 	_, err := os.Stat(logPath)
 	assert.True(t, os.IsNotExist(err), "no record should have been written for empty inbound+outbound")
