@@ -3341,7 +3341,11 @@ func (s *OpenAIGatewayService) buildUpstreamRequestOpenAIPassthrough(
 			req.Header.Set("OpenAI-Beta", "responses=experimental")
 		}
 		if req.Header.Get("originator") == "" {
-			req.Header.Set("originator", openAIOriginatorOfficial)
+			// 复用上游 resolveOpenAIUpstreamOriginator:客户端没传 originator 时,
+			// 按是否官方 Codex 客户端决定 official / fallback,避免 passthrough 路径
+			// 对非 Codex 客户端也一律 set "codex_cli_rs"(原行为 = 误强标官方)。
+			isCodexCLI := openai.IsCodexOfficialClientByHeaders(c.GetHeader("User-Agent"), c.GetHeader("originator"))
+			req.Header.Set("originator", resolveOpenAIUpstreamOriginator(c, isCodexCLI))
 		}
 		// 用隔离后的 session 标识符覆盖客户端透传值，防止跨用户会话碰撞。
 		if clientSessionID == "" {
